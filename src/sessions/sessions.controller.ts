@@ -12,7 +12,7 @@ import { CreateSessionDto } from './dto/create-session.dto';
 import { JoinSessionDto } from './dto/join-session.dto';
 import { CreateQuestionDto } from './dto/create-question.dto';
 import { FirebaseAuthGuard } from '../common/guards/firebase-auth.guard';
-import { RolesGuard } from 'src/common/guards/roles.guards';
+import { RolesGuard } from 'src/common/guards/roles.guard';
 import { Role } from 'src/common/decorators/roles.decorator';
 
 @Controller('sessions')

@@ -3,7 +3,7 @@ import { SessionsController } from './sessions.controller';
 import { SessionsService } from './sessions.service';
 import { FirebaseService } from './firebase/firebase.service';
 import { APP_GUARD } from '@nestjs/core';
-import { RolesGuard } from 'src/common/guards/roles.guards';
+import { RolesGuard } from 'src/common/guards/roles.guard';
 
 @Module({
   controllers: [SessionsController],
