@@ -2,6 +2,8 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { SessionsModule } from './sessions/sessions.module';
 import { FirebaseService } from './sessions/firebase/firebase.service';
+import { SessionsService } from './sessions/sessions.service';
+import { SessionsController } from './sessions/sessions.controller';
 
 @Module({
   imports: [
@@ -10,7 +12,8 @@ import { FirebaseService } from './sessions/firebase/firebase.service';
     }),
     SessionsModule,
   ],
-  providers: [FirebaseService],
+  controllers: [SessionsController],
+  providers: [FirebaseService, SessionsService],
   exports: [FirebaseService],
 })
 export class AppModule {}

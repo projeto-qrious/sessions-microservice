@@ -14,6 +14,12 @@ import { CreateQuestionDto } from './dto/create-question.dto';
 import { FirebaseAuthGuard } from '../common/guards/firebase-auth.guard';
 import { RolesGuard } from 'src/common/guards/roles.guard';
 import { Role } from 'src/common/decorators/roles.decorator';
+import {
+  Ctx,
+  MessagePattern,
+  Payload,
+  RmqContext,
+} from '@nestjs/microservices';
 
 @Controller('sessions')
 @UseGuards(FirebaseAuthGuard, RolesGuard)
@@ -21,81 +27,119 @@ export class SessionsController {
   constructor(private readonly sessionsService: SessionsService) {}
 
   @Role('SPEAKER')
-  @Post()
+  @MessagePattern({ cmd: 'create-session' })
   async createSession(
-    @Body() createSessionDto: CreateSessionDto,
-    @Request() req,
+    @Payload()
+    data: {
+      createSessionDto: CreateSessionDto;
+      userId: string;
+      role: string;
+    },
+    @Ctx() context: RmqContext,
   ) {
-    const userId = req.user.uid;
-    const session = await this.sessionsService.createSession(
+    const channel = context.getChannelRef();
+    const originalMsg = context.getMessage();
+    channel.ack(originalMsg);
+
+    const { createSessionDto, userId, role } = data;
+
+    return await this.sessionsService.createSession(
       createSessionDto,
       userId,
+      role,
     );
-
-    return session;
   }
 
   @Role('SPEAKER', 'ATTENDEE')
-  @Post('join')
-  async joinSession(@Body() joinSessionDto: JoinSessionDto, @Request() req) {
-    const userId = req.user.uid;
-    const session = await this.sessionsService.joinSession(
-      joinSessionDto,
-      userId,
-    );
-    return session;
+  @MessagePattern({ cmd: 'join-session' })
+  async joinSession(
+    @Payload()
+    data: { joinSessionDto: JoinSessionDto; userId: string; roles: string[] },
+    @Ctx() context: RmqContext,
+  ) {
+    // Confirma a mensagem para RabbitMQ
+    const channel = context.getChannelRef();
+    const originalMsg = context.getMessage();
+    channel.ack(originalMsg);
+
+    const { joinSessionDto, userId } = data;
+    return await this.sessionsService.joinSession(joinSessionDto, userId);
   }
 
   @Role('SPEAKER', 'ATTENDEE')
-  @Get(':sessionId')
-  async getSession(@Param('sessionId') sessionId: string) {
-    const session = await this.sessionsService.getSession(sessionId);
-    return session;
+  @MessagePattern({ cmd: 'get-session' })
+  async getSession(
+    @Payload() payload: { sessionId: string },
+    @Ctx() context: RmqContext,
+  ) {
+    // Confirma a mensagem para RabbitMQ
+    const channel = context.getChannelRef();
+    const originalMsg = context.getMessage();
+    channel.ack(originalMsg);
+
+    const { sessionId } = payload;
+    return await this.sessionsService.getSession(sessionId);
   }
 
   @Role('SPEAKER')
-  @Get(':sessionId/attendees')
+  @MessagePattern({ cmd: 'get-session-attendees' })
   async getSessionAttendees(
-    @Param('sessionId') sessionId: string,
-    @Request() req,
+    @Payload() payload: { sessionId: string; userId: string },
+    @Ctx() context: RmqContext,
   ) {
-    const userId = req.user.uid;
-    const attendees = await this.sessionsService.getSessionAttendees(
-      sessionId,
-      userId,
-    );
-    return attendees;
+    // Confirma a mensagem para RabbitMQ
+    const channel = context.getChannelRef();
+    const originalMsg = context.getMessage();
+    channel.ack(originalMsg);
+
+    const { sessionId, userId } = payload;
+    return await this.sessionsService.getSessionAttendees(sessionId, userId);
   }
 
   @Role('SPEAKER', 'ATTENDEE')
-  @Post('questions')
+  @MessagePattern({ cmd: 'create-question' })
   async createQuestion(
-    @Body() createQuestionDto: CreateQuestionDto,
-    @Request() req,
+    @Payload()
+    payload: { createQuestionDto: CreateQuestionDto; userId: string },
+    @Ctx() context: RmqContext,
   ) {
-    const userId = req.user.uid;
-    const question = await this.sessionsService.createQuestion(
-      createQuestionDto,
-      userId,
-    );
-    return question;
+    // Confirma a mensagem para RabbitMQ
+    const channel = context.getChannelRef();
+    const originalMsg = context.getMessage();
+    channel.ack(originalMsg);
+
+    const { createQuestionDto, userId } = payload;
+    return await this.sessionsService.createQuestion(createQuestionDto, userId);
   }
 
   @Role('SPEAKER', 'ATTENDEE')
-  @Get(':sessionId/questions')
-  async getQuestions(@Param('sessionId') sessionId: string) {
-    const questions = await this.sessionsService.getQuestions(sessionId);
-    return questions;
+  @MessagePattern({ cmd: 'get-questions' })
+  async getQuestions(
+    @Payload() payload: { sessionId: string },
+    @Ctx() context: RmqContext,
+  ) {
+    // Confirma a mensagem para RabbitMQ
+    const channel = context.getChannelRef();
+    const originalMsg = context.getMessage();
+    channel.ack(originalMsg);
+
+    const { sessionId } = payload;
+    return await this.sessionsService.getQuestions(sessionId);
   }
 
   @Role('SPEAKER', 'ATTENDEE')
-  @Post(':sessionId/questions/:questionId/vote')
+  @MessagePattern({ cmd: 'vote-question' })
   async voteQuestion(
-    @Param('sessionId') sessionId: string,
-    @Param('questionId') questionId: string,
-    @Request() req,
+    @Payload()
+    payload: { sessionId: string; questionId: string; userId: string },
+    @Ctx() context: RmqContext,
   ) {
-    const userId = req.user.uid;
+    // Confirma a mensagem para RabbitMQ
+    const channel = context.getChannelRef();
+    const originalMsg = context.getMessage();
+    channel.ack(originalMsg);
+
+    const { sessionId, questionId, userId } = payload;
     await this.sessionsService.voteQuestion(sessionId, questionId, userId);
     return { message: 'Voto registrado com sucesso' };
   }

@@ -36,7 +36,7 @@ export class SessionsService {
     sessionCode: string,
   ): Promise<string> {
     // Gera um URL para a sessão
-    const sessionURL = `http://localhost:3002/sessions/join/${sessionCode}`;
+    const sessionURL = `http://172.16.33.73:3001/sessions/join/${sessionCode}`;
 
     // Gera o QR code a partir do URL
     const qrCodeDataURL = await QRCode.toDataURL(sessionURL);
@@ -68,9 +68,14 @@ export class SessionsService {
   async createSession(
     createSessionDto: CreateSessionDto,
     userId: string,
+    role: string, // Adiciona a role ao método
   ): Promise<any> {
     // Verifica se o usuário é um SPEAKER antes de criar uma sessão
-    await this.validateUserRole(userId, 'SPEAKER');
+    if (role !== 'SPEAKER') {
+      throw new ForbiddenException(
+        'Permissão negada: Apenas usuários com o papel "SPEAKER" podem executar esta ação.',
+      );
+    }
 
     const sessionCode = await this.generateUniqueSessionCode();
 

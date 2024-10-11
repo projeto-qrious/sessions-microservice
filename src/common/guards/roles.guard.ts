@@ -19,7 +19,6 @@ export class RolesGuard extends FirebaseAuthGuard implements CanActivate {
   }
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
-    // Primeiro, verifica se o usuário está autenticado usando o guard de autenticação
     await super.canActivate(context);
 
     const requiredRoles = this.reflector.getAllAndOverride<string[]>(
@@ -32,8 +31,21 @@ export class RolesGuard extends FirebaseAuthGuard implements CanActivate {
       return true;
     }
 
-    const request = context.switchToHttp().getRequest();
-    const user = request.user;
+    let user;
+
+    if (context.getType() === 'rpc') {
+      // Para contexto RPC, obtém o usuário do data
+      const data = context.switchToRpc().getData();
+      user = data.user;
+    } else {
+      // Para contexto HTTP, obtém o usuário do request
+      const request = context.switchToHttp().getRequest();
+      user = request.user;
+    }
+
+    if (!user) {
+      throw new ForbiddenException('Acesso negado: Usuário não autenticado.');
+    }
 
     // Verifica se o usuário possui um dos papéis necessários
     if (!requiredRoles.includes(user.role)) {
