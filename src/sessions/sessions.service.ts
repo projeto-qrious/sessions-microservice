@@ -97,7 +97,7 @@ export class SessionsService {
   async joinSession(
     JoinSessionDto: JoinSessionDto,
     userId: string,
-  ): Promise<void> {
+  ): Promise<{ sessionId: string }> {
     const { sessionCode, sessionId } = JoinSessionDto;
     let sessionRef = null;
 
@@ -128,9 +128,12 @@ export class SessionsService {
       : Object.keys(sessionSnapshot.val())[0];
 
     await this.db.ref(`sessions/${sessionKey}/attendees/${userId}`).set(true);
+
+    return { sessionId: sessionKey }; // Retornar o sessionId para ser usado no redirecionamento
   }
 
   async getSession(sessionId: string): Promise<any> {
+    // Obtém os dados da sessão do Firebase Realtime Database
     const sessionSnapshot = await this.db
       .ref(`sessions/${sessionId}`)
       .once('value');
@@ -139,7 +142,28 @@ export class SessionsService {
       throw new NotFoundException('Sessão não encontrada');
     }
 
-    return sessionSnapshot.val();
+    // Obtém os dados da sessão
+    const sessionData = sessionSnapshot.val();
+
+    // Verifica se `sessionCode` e `qrcode` estão presentes na sessão
+    if (!sessionData.sessionCode || !sessionData.qrcode) {
+      // Se não estiverem, recalcula o QRCode e atualiza a sessão
+      const sessionCode =
+        sessionData.sessionCode ?? (await this.generateUniqueSessionCode());
+      const qrcode = await this.generateQRCode(sessionId, sessionCode);
+
+      // Atualiza a sessão no banco de dados
+      await this.db
+        .ref(`sessions/${sessionId}`)
+        .update({ sessionCode, qrcode });
+
+      // Atualiza os valores no objeto de retorno
+      sessionData.sessionCode = sessionCode;
+      sessionData.qrcode = qrcode;
+    }
+
+    // Retorna os dados completos da sessão, incluindo sessionCode e qrcode
+    return sessionData;
   }
 
   async getSessionAttendees(sessionId: string, userId: string): Promise<any[]> {

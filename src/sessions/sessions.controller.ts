@@ -39,8 +39,11 @@ export class SessionsController {
   @Post('join')
   async joinSession(@Body() joinSessionDto: JoinSessionDto, @Request() req) {
     const userId = req.user.uid;
-    await this.sessionsService.joinSession(joinSessionDto, userId);
-    return { message: 'Registrado na sessão com sucesso' };
+    const session = await this.sessionsService.joinSession(
+      joinSessionDto,
+      userId,
+    );
+    return session;
   }
 
   @Role('SPEAKER', 'ATTENDEE')
