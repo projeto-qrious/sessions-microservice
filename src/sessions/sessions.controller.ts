@@ -67,6 +67,19 @@ export class SessionsController {
   }
 
   @Role('SPEAKER', 'ATTENDEE')
+  @MessagePattern({ cmd: 'get-user-sessions' })
+  async getUserSessions(@Payload() payload: any, @Ctx() context: RmqContext) {
+    // Confirma a mensagem para RabbitMQ
+    const channel = context.getChannelRef();
+    const originalMsg = context.getMessage();
+    channel.ack(originalMsg);
+
+    const { userId } = payload;
+
+    return await this.sessionsService.getUserSessions(userId);
+  }
+
+  @Role('SPEAKER', 'ATTENDEE')
   @MessagePattern({ cmd: 'get-session' })
   async getSession(
     @Payload() payload: { sessionId: string },
@@ -79,6 +92,20 @@ export class SessionsController {
 
     const { sessionId } = payload;
     return await this.sessionsService.getSession(sessionId);
+  }
+
+  @Role('SPEAKER')
+  @MessagePattern({ cmd: 'get-sessions-by-speaker' })
+  async getSessionsBySpeaker(
+    @Payload() payload: { userId: string },
+    @Ctx() context: RmqContext,
+  ) {
+    const channel = context.getChannelRef();
+    const originalMsg = context.getMessage();
+    channel.ack(originalMsg);
+
+    const { userId } = payload;
+    return await this.sessionsService.getSessionsBySpeaker(userId);
   }
 
   @Role('SPEAKER')
@@ -125,6 +152,20 @@ export class SessionsController {
 
     const { sessionId } = payload;
     return await this.sessionsService.getQuestions(sessionId);
+  }
+
+  @Role('SPEAKER', 'ATTENDEE')
+  @MessagePattern({ cmd: 'get-question-details' })
+  async getQuestionDetails(
+    @Payload() payload: { sessionId: string; questionId: string },
+    @Ctx() context: RmqContext,
+  ) {
+    const channel = context.getChannelRef();
+    const originalMsg = context.getMessage();
+    channel.ack(originalMsg);
+
+    const { sessionId, questionId } = payload;
+    return await this.sessionsService.getQuestionDetails(sessionId, questionId);
   }
 
   @Role('SPEAKER', 'ATTENDEE')

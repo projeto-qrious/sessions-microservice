@@ -36,7 +36,7 @@ export class SessionsService {
     sessionCode: string,
   ): Promise<string> {
     // Gera um URL para a sessão
-    const sessionURL = `http://172.16.33.73:3001/sessions/join/${sessionCode}`;
+    const sessionURL = `http://192.168.1.188:3000/sessions/joinqrcode/${sessionCode}`;
 
     // Gera o QR code a partir do URL
     const qrCodeDataURL = await QRCode.toDataURL(sessionURL);
@@ -100,13 +100,12 @@ export class SessionsService {
   }
 
   async joinSession(
-    JoinSessionDto: JoinSessionDto,
+    joinSessionDto: JoinSessionDto,
     userId: string,
   ): Promise<{ sessionId: string }> {
-    const { sessionCode, sessionId } = JoinSessionDto;
+    const { sessionCode, sessionId } = joinSessionDto;
     let sessionRef = null;
 
-    // Verifica se a sessão está sendo acessada por ID ou pelo código curto
     if (sessionId) {
       sessionRef = this.db.ref(`sessions/${sessionId}`);
     } else if (sessionCode) {
@@ -127,14 +126,48 @@ export class SessionsService {
       throw new NotFoundException('Sessão não encontrada');
     }
 
-    // Se `sessionRef` foi obtido usando `orderByChild`, sessionSnapshot.val() retorna um objeto com o ID da sessão como chave.
     const sessionKey = sessionId
       ? sessionId
       : Object.keys(sessionSnapshot.val())[0];
 
+    // Adiciona o usuário à sessão
     await this.db.ref(`sessions/${sessionKey}/attendees/${userId}`).set(true);
 
-    return { sessionId: sessionKey }; // Retornar o sessionId para ser usado no redirecionamento
+    // Adiciona a sessão ao histórico do usuário
+    await this.db.ref(`users/${userId}/sessions/${sessionKey}`).set(true);
+
+    return { sessionId: sessionKey };
+  }
+
+  async getUserSessions(userId: string): Promise<any[]> {
+    const userSessionsSnapshot = await this.db
+      .ref(`users/${userId}/sessions`) // Correção: Busca as sessões do usuário no caminho correto
+      .once('value');
+
+    const userSessions = userSessionsSnapshot.val() || {};
+    const sessionIds = Object.keys(userSessions);
+
+    const sessionPromises = sessionIds.map(async (sessionId) => {
+      const sessionSnapshot = await this.db
+        .ref(`sessions/${sessionId}`) // Busca os detalhes da sessão no caminho correto
+        .once('value');
+
+      // Verifica se a sessão existe antes de tentar acessar seus valores
+      if (sessionSnapshot.exists()) {
+        return { sessionId, ...sessionSnapshot.val() };
+      } else {
+        // Trata o caso onde a sessão não é encontrada, talvez logando um erro
+        console.error(`Sessão não encontrada para o ID: ${sessionId}`);
+        return null;
+      }
+    });
+
+    // Remove as sessões que não foram encontradas (null)
+    const sessions = (await Promise.all(sessionPromises)).filter(
+      (session) => session !== null,
+    );
+
+    return sessions;
   }
 
   async getSession(sessionId: string): Promise<any> {
@@ -169,6 +202,33 @@ export class SessionsService {
 
     // Retorna os dados completos da sessão, incluindo sessionCode e qrcode
     return sessionData;
+  }
+
+  async getSessionsBySpeaker(userId: string): Promise<any[]> {
+    // Valida se o usuário é SPEAKER
+    const userSnapshot = await this.db.ref(`users/${userId}`).once('value');
+    const userData = userSnapshot.val();
+
+    if (!userData || userData.role !== 'SPEAKER') {
+      throw new ForbiddenException(
+        'Permissão negada: Apenas usuários com o papel "SPEAKER" podem acessar essas sessões.',
+      );
+    }
+
+    // Busca todas as sessões onde `createdBy` é o `userId` do palestrante
+    const sessionsSnapshot = await this.db
+      .ref('sessions')
+      .orderByChild('createdBy')
+      .equalTo(userId)
+      .once('value');
+
+    const sessions = sessionsSnapshot.val() || {};
+    const sessionList = Object.keys(sessions).map((sessionId) => ({
+      sessionId,
+      ...sessions[sessionId],
+    }));
+
+    return sessionList;
   }
 
   async getSessionAttendees(sessionId: string, userId: string): Promise<any[]> {
@@ -234,6 +294,23 @@ export class SessionsService {
 
     // Retorna as perguntas como uma lista
     return Object.values(questions);
+  }
+
+  async getQuestionDetails(
+    sessionId: string,
+    questionId: string,
+  ): Promise<any> {
+    const sessionRef = this.db.ref(
+      `sessions/${sessionId}/questions/${questionId}`,
+    );
+    const questionSnapshot = await sessionRef.once('value');
+
+    if (!questionSnapshot.exists()) {
+      throw new NotFoundException('Pergunta não encontrada');
+    }
+
+    const questionData = questionSnapshot.val();
+    return questionData;
   }
 
   async voteQuestion(
