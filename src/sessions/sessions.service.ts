@@ -36,7 +36,7 @@ export class SessionsService {
     sessionCode: string,
   ): Promise<string> {
     // Gera um URL para a sessão
-    const sessionURL = `http://192.168.1.188:3000/sessions/joinqrcode/${sessionCode}`;
+    const sessionURL = `http://172.16.33.214:3000/sessions/joinqrcode/${sessionCode}`;
 
     // Gera o QR code a partir do URL
     const qrCodeDataURL = await QRCode.toDataURL(sessionURL);

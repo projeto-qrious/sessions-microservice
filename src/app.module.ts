@@ -9,6 +9,7 @@ import { SessionsController } from './sessions/sessions.controller';
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
+      envFilePath: '.env',
     }),
     SessionsModule,
   ],

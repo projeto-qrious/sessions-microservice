@@ -1,6 +1,5 @@
 import { Injectable } from '@nestjs/common';
 import * as admin from 'firebase-admin';
-import * as serviceAccount from '../../../firebaseadmin.json';
 
 @Injectable()
 export class FirebaseService {
@@ -8,11 +7,24 @@ export class FirebaseService {
 
   constructor() {
     if (!admin.apps.length) {
+      // Step 1: Read the environment variable
+      const base64Config = process.env.FIREBASE_CONFIG_BASE64;
+      if (!base64Config) {
+        throw new Error('Missing FIREBASE_CONFIG_BASE64 environment variable');
+      }
+
+      // Step 2: Decode from Base64
+      const decodedConfig = Buffer.from(base64Config, 'base64').toString(
+        'utf-8',
+      );
+
+      // Step 3: Parse JSON
+      const serviceAccount = JSON.parse(decodedConfig);
+
+      // Step 4: Initialize Firebase Admin SDK
       this.app = admin.initializeApp({
-        credential: admin.credential.cert(
-          serviceAccount as admin.ServiceAccount,
-        ),
-        databaseURL: 'https://qrious-51310-default-rtdb.firebaseio.com/',
+        credential: admin.credential.cert(serviceAccount),
+        databaseURL: process.env.FIREBASE_DATABASE_URL,
       });
     } else {
       this.app = admin.app();
