@@ -184,4 +184,25 @@ export class SessionsController {
     await this.sessionsService.voteQuestion(sessionId, questionId, userId);
     return { message: 'Voto registrado com sucesso' };
   }
+
+  @Role('SPEAKER')
+  @MessagePattern({ cmd: 'mark-question-as-answered' })
+  async markQuestionAsAnswered(
+    @Payload()
+    payload: { sessionId: string; questionId: string; userId: string },
+    @Ctx() context: RmqContext,
+  ) {
+    const channel = context.getChannelRef();
+    const originalMsg = context.getMessage();
+    channel.ack(originalMsg);
+
+    const { sessionId, questionId, userId } = payload;
+
+    await this.sessionsService.markQuestionAsAnswered(
+      sessionId,
+      questionId,
+      userId,
+    );
+    return { message: 'Pergunta marcada como respondida.' };
+  }
 }

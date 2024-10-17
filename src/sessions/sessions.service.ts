@@ -331,4 +331,39 @@ export class SessionsService {
       await voteRef.set(true);
     }
   }
+
+  async markQuestionAsAnswered(
+    sessionId: string,
+    questionId: string,
+    userId: string,
+  ): Promise<void> {
+    const sessionRef = this.db.ref(`sessions/${sessionId}`);
+    const sessionSnapshot = await sessionRef.once('value');
+
+    if (!sessionSnapshot.exists()) {
+      throw new NotFoundException('Sessão não encontrada');
+    }
+
+    const session = sessionSnapshot.val();
+
+    // Verifica se o usuário é o criador da sessão
+    if (session.createdBy !== userId) {
+      throw new ForbiddenException(
+        'Permissão negada: Apenas o criador da sessão pode alterar o estado da pergunta.',
+      );
+    }
+
+    const questionRef = sessionRef.child(`questions/${questionId}`);
+    const questionSnapshot = await questionRef.once('value');
+
+    if (!questionSnapshot.exists()) {
+      throw new NotFoundException('Pergunta não encontrada');
+    }
+
+    const questionData = questionSnapshot.val();
+    const isAnswered = questionData.answered || false;
+
+    // Alterna entre true e false
+    await questionRef.update({ answered: !isAnswered });
+  }
 }
