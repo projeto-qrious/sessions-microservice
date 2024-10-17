@@ -95,8 +95,11 @@ export class SessionsService {
     };
 
     await sessionRef.set(sessionData);
-
-    return { sessionId, sessionCode, ...sessionData };
+    const joinResult = await this.joinSession(
+      { sessionId, sessionCode },
+      userId,
+    );
+    return { sessionId, sessionCode, ...sessionData, ...joinResult };
   }
 
   async joinSession(
