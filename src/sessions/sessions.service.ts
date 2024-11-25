@@ -36,7 +36,7 @@ export class SessionsService {
     sessionCode: string,
   ): Promise<string> {
     // Gera um URL para a sessão
-    const sessionURL = `https://qrious-front-end.onrender.com/sessions/joinqrcode/${sessionCode}`;
+    const sessionURL = `https://qrious-front-end-5863.onrender.com/sessions/joinqrcode/${sessionCode}`;
 
     // Gera o QR code a partir do URL
     const qrCodeDataURL = await QRCode.toDataURL(sessionURL);
